@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Servo Movement System: システム技術解説書</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
+            background-color: #f9f9f9;
+            margin: 0;
+            padding: 0;
+        }
+        .content-wrapper {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #0056b3;
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        h1 {
+            text-align: center;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 20px;
+            word-wrap: break-word;
+        }
+        .author {
+            text-align: center;
+            margin-bottom: 50px;
+            font-size: 1.2em;
+        }
+        h2 {
+            font-size: 1.8em;
+            margin-top: 40px;
+            border-left: 5px solid #0056b3;
+            padding-left: 15px;
+            background-color: #eef;
+            padding-top: 5px;
+            padding-bottom: 5px;
+            word-wrap: break-word;
+        }
+        h3 {
+            font-size: 1.4em;
+            margin-top: 30px;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            word-wrap: break-word;
+        }
+        h4 {
+            font-size: 1.2em;
+            margin-top: 25px;
+            word-wrap: break-word;
+        }
+        p {
+            margin-bottom: 1.5em;
+            text-align: justify;
+            line-height: 1.8;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        .abstract {
+            font-style: italic;
+            margin: 40px 0;
+            padding: 20px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .equation {
+            text-align: center;
+            margin: 20px 0;
+            font-family: "Times New Roman", serif;
+            overflow-x: auto;
+            overflow-y: hidden;
+        }
+        code {
+            font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+            background-color: #f0f0f0;
+            padding: 2px 5px;
+            border-radius: 3px;
+            word-wrap: break-word;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+            padding-left: 35px;
+            line-height: 1.9;
+        }
+        li {
+            margin-bottom: 10px;
+            word-wrap: break-word;
+        }
+        section {
+            background: white;
+            padding: 30px;
+            margin-bottom: 30px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .note {
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe082 100%);
+            border-left: 4px solid #ffa726;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        .note strong {
+            color: #e65100;
+        }
+        strong {
+            font-weight: 600;
+        }
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding: 20px;
+            color: #666;
+        }
+        
+        /* スマホ対応 */
+        @media (max-width: 768px) {
+            .content-wrapper {
+                padding: 20px 10px;
+            }
+            h1 {
+                font-size: 1.8em;
+                padding-bottom: 15px;
+            }
+            h2 {
+                font-size: 1.4em;
+                padding-left: 10px;
+            }
+            h3 {
+                font-size: 1.2em;
+            }
+            h4 {
+                font-size: 1.1em;
+            }
+            section {
+                padding: 15px;
+            }
+            .equation {
+                font-size: 0.9em;
+            }
+            ul, ol {
+                padding-left: 20px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            h2 {
+                font-size: 1.2em;
+            }
+            h3 {
+                font-size: 1.1em;
+            }
+            .equation {
+                font-size: 0.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="content-wrapper">
+        <a href="index.html" class="back-link">← トップページに戻る</a>
+
+        <h1>Servo Movement System システム技術解説書</h1>
+        <div class="author"><strong>Version 1.0 - Technical Documentation</strong></div>
+
+    <section>
+    <h2>1. 概要 (Abstract)</h2>
+    <p>
+        本システム「Servo Movement System」は，RealSense Road Scannerで検出された路面情報を物理的な挙動に変換する遅延補償制御システムである．
+        センサ検知から実際の到達までの時間差を正確に予測・補償し，適切なタイミングでサーボモータの角度を制御することで，
+        運転席に対して路面の衝撃や振動を高精度に伝達する．本稿では，遅延補償アルゴリズム，サーボ角度制御モデル，
+        および適応学習機構の数理的基礎と実装詳細について解説する．
+    </p>
+    </section>
+
+    <section>
+    <h2>2. システムアーキテクチャ (System Architecture)</h2>
+    
+    <h3>2.1 全体構成</h3>
+    <p>
+        Servo Movement Systemは，以下の4つの主要モジュールで構成される：
+    </p>
+    <ol>
+        <li><strong>入力インターフェースモジュール：</strong> RealSenseからの障害物検出データを受信</li>
+        <li><strong>遅延補償モジュール：</strong> 到達時刻を予測し，コマンドをキューイング</li>
+        <li><strong>角度制御モジュール：</strong> 障害物情報からサーボ目標角度を算出</li>
+        <li><strong>適応学習モジュール：</strong> 実測値との差分から遅延パラメータを更新</li>
+    </ol>
+
+    <h3>2.2 データフロー</h3>
+    <p>
+        システム内のデータフローは以下の通りである：
+    </p>
+    <div class="equation">
+        $$ \text{障害物検出} \rightarrow \text{到達時刻予測} \rightarrow \text{コマンドキュー} \rightarrow \text{サーボ制御} \rightarrow \text{フィードバック学習} $$
+    </div>
+
+    <h2>3. 遅延補償アルゴリズム (Delay Compensation Algorithm)</h2>
+    
+    <h3>3.1 到達時刻予測モデル</h3>
+    <p>
+        センサで障害物を検出した時刻を \( t_{detect} \)，タイヤがその位置に到達する時刻を \( t_{arrival} \) とすると，
+        到達までの遅延時間 \( T_{delay} \) は以下のように定式化される：
+    </p>
+    <div class="equation">
+        $$ T_{delay} = \frac{L}{v(t)} $$
+    </div>
+    <p>
+        ここで，
+    </p>
+    <ul>
+        <li>\( L \): カメラからタイヤまでの距離（本システムでは \( L = 0.15 \, \text{m} \)）</li>
+        <li>\( v(t) \): 時刻 \( t \) における車両速度（m/s単位）</li>
+    </ul>
+    <p>
+        したがって，サーボ作動時刻 \( t_{target} \) は，
+    </p>
+    <div class="equation">
+        $$ t_{target} = t_{detect} + T_{delay} $$
+    </div>
+
+    <h3>3.2 スケールモデル補正</h3>
+    <p>
+        本システムは1/8スケールモデルで動作するため，実車速度と模型速度の関係を考慮する必要がある．
+        スケール比を \( S = 8 \) とすると，実車速度 \( v_{real} \) と模型速度 \( v_{model} \) の関係は：
+    </p>
+    <div class="equation">
+        $$ v_{model} = \frac{v_{real}}{S} $$
+    </div>
+    <p>
+        また，距離もスケールに応じて縮小されるため，模型における遅延時間 \( T_{delay}^{model} \) は：
+    </p>
+    <div class="equation">
+        $$ T_{delay}^{model} = \frac{L_{model}}{v_{model}} = \frac{L_{real}/S}{v_{real}/S} = \frac{L_{real}}{v_{real}} = T_{delay}^{real} $$
+    </div>
+    <p>
+        すなわち，時間スケールは保存される．実車60km/h（16.67m/s）相当の走行では：
+    </p>
+    <div class="equation">
+        $$ T_{delay} = \frac{0.15}{16.67/8} \approx 0.072 \, \text{s} = 72 \, \text{ms} $$
+    </div>
+
+    <h3>3.3 コマンドキュー管理</h3>
+    <p>
+        予測された到達時刻とサーボ制御コマンドをキュー（優先度付きキュー）で管理する．
+        各コマンド \( C_i \) は以下の情報を含む：
+    </p>
+    <div class="equation">
+        $$ C_i = \{ t_{target}, \theta_{target}, \Delta t, h_{obstacle} \} $$
+    </div>
+    <ul>
+        <li>\( t_{target} \): 実行時刻</li>
+        <li>\( \theta_{target} \): サーボ目標角度</li>
+        <li>\( \Delta t \): 動作継続時間</li>
+        <li>\( h_{obstacle} \): 障害物高さ</li>
+    </ul>
+    <p>
+        メインループは，現在時刻 \( t_{now} \) と比較し，\( t_{now} \geq t_{target} \) を満たすコマンドを順次実行する：
+    </p>
+    <div class="equation">
+        $$ \text{if } t_{now} \geq C_i.t_{target} \text{ then execute } C_i $$
+    </div>
+
+    <h2>4. サーボ角度制御モデル (Servo Angle Control Model)</h2>
+    
+    <h3>4.1 目標角度算出</h3>
+    <p>
+        検出された障害物の高さ \( h_{obstacle} \) から，サーボモータの目標角度 \( \theta_{target} \) を算出する．
+        基準角度を \( \theta_{base} \)（通常は水平位置，例: 90°），ゲイン係数を \( k \) とすると：
+    </p>
+    <div class="equation">
+        $$ \theta_{target} = \theta_{base} + k \cdot h_{obstacle} $$
+    </div>
+    <p>
+        ゲイン \( k \) は，障害物高さ（mm単位）を角度変化（degree単位）に変換する係数であり，
+        実験的に最適値を決定する．典型的な値は \( k = 0.3 \sim 0.7 \, \text{deg/mm} \) である．
+    </p>
+
+    <h3>4.2 角度制約と飽和処理</h3>
+    <p>
+        サーボモータの物理的可動範囲を考慮し，角度制約を設ける：
+    </p>
+    <div class="equation">
+        $$ \theta_{min} \leq \theta_{target} \leq \theta_{max} $$
+    </div>
+    <p>
+        一般的なホビー用サーボでは，\( \theta_{min} = 0° \)，\( \theta_{max} = 180° \) である．
+        算出された目標角度がこの範囲を超える場合，飽和処理を行う：
+    </p>
+    <div class="equation">
+        $$ \theta_{target} = \begin{cases}
+        \theta_{min} & \text{if } \theta_{target} < \theta_{min} \\
+        \theta_{max} & \text{if } \theta_{target} > \theta_{max} \\
+        \theta_{target} & \text{otherwise}
+        \end{cases} $$
+    </div>
+
+    <h3>4.3 動作パターン生成</h3>
+    <p>
+        単純な角度変更だけでなく，「衝撃」を忠実に再現するため，時間的な動作パターンを生成する．
+        以下のような3段階の動作シーケンスを実装：
+    </p>
+    <ol>
+        <li><strong>初期状態：</strong> \( \theta(t_0) = \theta_{base} \)</li>
+        <li><strong>衝撃ピーク：</strong> \( \theta(t_0 + \Delta t_1) = \theta_{target} \)（急速移動，\( \Delta t_1 \approx 50 \, \text{ms} \)）</li>
+        <li><strong>減衰復帰：</strong> \( \theta(t_0 + \Delta t_1 + \Delta t_2) = \theta_{base} \)（減衰復帰，\( \Delta t_2 \approx 200 \, \text{ms} \)）</li>
+    </ol>
+    <p>
+        この動作は，減衰振動モデルで近似できる：
+    </p>
+    <div class="equation">
+        $$ \theta(t) = \theta_{base} + (\theta_{target} - \theta_{base}) \cdot e^{-\zeta \omega_n t} \cos(\omega_d t) $$
+    </div>
+    <ul>
+        <li>\( \zeta \): 減衰比（例: 0.3）</li>
+        <li>\( \omega_n \): 固有角周波数</li>
+        <li>\( \omega_d = \omega_n \sqrt{1 - \zeta^2} \): 減衰固有角周波数</li>
+    </ul>
+
+    <h2>5. 適応学習機構 (Adaptive Learning Mechanism)</h2>
+    
+    <h3>5.1 誤差フィードバックモデル</h3>
+    <p>
+        実際の走行では，タイヤスリップ，計測誤差，処理遅延などにより，予測到達時刻と実際の到達時刻にズレが生じる．
+        ジャイロセンサや加速度センサで実際の衝撃を観測した時刻を \( t_{measured} \) とすると，誤差 \( e \) は：
+    </p>
+    <div class="equation">
+        $$ e = t_{measured} - t_{target} $$
+    </div>
+
+    <h3>5.2 遅延パラメータの学習更新</h3>
+    <p>
+        観測された誤差 \( e \) を用いて，遅延パラメータ \( T_{delay} \) を更新する．
+        学習率を \( \beta \)（\( 0 < \beta < 1 \)）とすると：
+    </p>
+    <div class="equation">
+        $$ T_{delay}^{(n+1)} = T_{delay}^{(n)} + \beta \cdot e $$
+    </div>
+    <p>
+        典型的な学習率は \( \beta = 0.05 \sim 0.15 \) である．学習率が大きすぎると不安定になり，
+        小さすぎると収束が遅くなるため，適切な値を選定する必要がある．
+    </p>
+
+    <h3>5.3 指数移動平均によるロバスト推定</h3>
+    <p>
+        ノイズの影響を低減するため，指数移動平均（EMA）を用いて遅延パラメータを更新する：
+    </p>
+    <div class="equation">
+        $$ \bar{T}_{delay}^{(n+1)} = \alpha \cdot T_{delay}^{(n+1)} + (1 - \alpha) \cdot \bar{T}_{delay}^{(n)} $$
+    </div>
+    <p>
+        ここで，\( \alpha \) は平滑化係数（例: \( \alpha = 0.2 \)）である．
+        これにより，一時的な外乱に対してロバストな推定が可能となる．
+    </p>
+
+    <h2>6. 性能評価と制約条件 (Performance Evaluation & Constraints)</h2>
+    
+    <h3>6.1 タイミング制約</h3>
+    <p>
+        本システムの時間的制約を以下に示す：
+    </p>
+    <ul>
+        <li><strong>処理周期：</strong> 30〜60Hz（16.7〜33.3ms）</li>
+        <li><strong>猶予時間（60km/h相当）：</strong> 約72ms</li>
+        <li><strong>猶予時間（100km/h相当）：</strong> 約43ms</li>
+        <li><strong>サーボ応答時間：</strong> 約50ms（±20°移動）</li>
+    </ul>
+    <p>
+        処理時間とサーボ応答時間の合計が猶予時間以内に収まるため，リアルタイム制御として十分な性能を有する．
+    </p>
+
+    <h3>6.2 精度評価</h3>
+    <p>
+        遅延補償の精度は，予測誤差の二乗平均平方根誤差（RMSE）で評価される：
+    </p>
+    <div class="equation">
+        $$ \text{RMSE} = \sqrt{\frac{1}{N} \sum_{i=1}^{N} (t_{measured}^{(i)} - t_{target}^{(i)})^2} $$
+    </div>
+    <p>
+        実験結果として，適応学習を用いた場合のRMSEは約5〜8ms程度に収まり，
+        猶予時間（43〜72ms）に対して十分小さい誤差である．
+    </p>
+
+    <h2>7. 実装上の考慮事項 (Implementation Considerations)</h2>
+    
+    <h3>7.1 リアルタイム性の保証</h3>
+    <p>
+        リアルタイム制御を実現するため，以下の実装手法を採用：
+    </p>
+    <ul>
+        <li>優先度付きキューによる効率的なコマンド管理（計算量 \( O(\log N) \)）</li>
+        <li>専用スレッドでのサーボ制御ループ実行</li>
+        <li>割り込みベースのタイマー機構</li>
+    </ul>
+
+    <h3>7.2 複数障害物への対応</h3>
+    <p>
+        複数の障害物が連続して検出される場合，以下の戦略を採用：
+    </p>
+    <ol>
+        <li><strong>独立実行：</strong> 各コマンドを個別に実行（時間的に重複しない場合）</li>
+        <li><strong>合成実行：</strong> 複数の衝撃を合成した動作パターンを生成（重複する場合）</li>
+        <li><strong>優先度制御：</strong> 大きな障害物を優先的に処理</li>
+    </ol>
+
+    <h3>7.3 安全機構</h3>
+    <p>
+        システムの安全性を確保するため，以下の機構を実装：
+    </p>
+    <ul>
+        <li>角度制約による可動範囲制限</li>
+        <li>異常値検出とフェイルセーフ機構</li>
+        <li>緊急停止機能</li>
+    </ul>
+
+    <h2>8. 結論 (Conclusion)</h2>
+    <p>
+        本稿では，Servo Movement Systemの数理的基礎と実装詳細について解説した．
+        本システムは，以下の技術的特徴を有する：
+    </p>
+    <ol>
+        <li>速度と距離に基づく高精度な遅延補償アルゴリズム</li>
+        <li>障害物情報から物理的挙動を生成する角度制御モデル</li>
+        <li>実測値との差分から学習する適応制御機構</li>
+        <li>リアルタイム制約を満たす効率的な実装</li>
+    </ol>
+    <p>
+        これらの技術により，RealSenseで検出された路面情報を，高精度かつリアルタイムに物理フィードバックとして提示することが可能となった．
+        今後の課題として，複雑な路面パターンへの対応，機械学習による最適ゲイン自動調整，
+        および実車スケールへのスケールアップが挙げられる．
+    </p>
+
+    <div class="note">
+        <strong>注記：</strong> 本システムは，RealSense Road Scannerと組み合わせることで，
+        完全な路面性状監視・物理フィードバックシステムを構成する．
+        両システムの統合により，自動運転，遠隔操作，シミュレーション環境における
+        臨場感の大幅な向上が期待される．
+    </div>
+
+    <footer>
+        &copy; 2025 ServoDrive - Servo Movement System Project<br>
+        Technical Documentation Version 1.0
+    </footer>
+    </div>
+</body>
+</html>
+

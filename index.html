@@ -54,21 +54,21 @@
                             <div class="card-content">
                                 <div class="card-title-wrapper">
                                     <span class="card-title grey-text text-darken-4">
-                                        <i class="material-icons left">directions_car</i>
+                                        <i class="material-icons left">camera</i>
                                         RealSense Road Scanner
                                     </span>
-                                    <span class="new badge blue" data-badge-caption="深度センシング × 物理フィードバック"></span>
+                                    <span class="new badge blue" data-badge-caption="深度センシング × 凹凸検出"></span>
                                 </div>
                                 <p class="grey-text text-darken-1">
-                                    Intel RealSense D435i深度カメラを用いた路面性状のリアルタイム監視および物理フィードバックシステム。
-                                    車両前方の路面状況を深度センサでスキャンし、突起や障害物を検出すると、その情報に基づいてサーボモータを制御し、
-                                    運転席に対して物理的な挙動（衝撃や振動）を再現します。
+                                    Intel RealSense D435i深度カメラを用いた路面性状のリアルタイム監視システム。
+                                    車両前方の路面状況を深度センサでスキャンし、突起や障害物を高精度に検出します。
+                                    3次元点群データの解析により、路面の凹凸を定量的に計測します。
                                 </p>
                                 
                                 <div class="chip-container">
                                     <div class="chip blue lighten-4">3次元センシング</div>
                                     <div class="chip blue lighten-4">適応的検知</div>
-                                    <div class="chip blue lighten-4">遅延補償制御</div>
+                                    <div class="chip blue lighten-4">点群処理</div>
                                     <div class="chip blue lighten-4">リアルタイム処理</div>
                                 </div>
                             </div>
@@ -86,7 +86,45 @@
                         </div>
                     </div>
 
-                    <!-- Project 2: QRCode Rotation Measurement -->
+                    <!-- Project 2: Servo Movement System -->
+                    <div class="col s12">
+                        <div class="card hoverable">
+                            <div class="card-content">
+                                <div class="card-title-wrapper">
+                                    <span class="card-title grey-text text-darken-4">
+                                        <i class="material-icons left">settings_remote</i>
+                                        Servo Movement System
+                                    </span>
+                                    <span class="new badge purple" data-badge-caption="遅延補償 × 物理フィードバック"></span>
+                                </div>
+                                <p class="grey-text text-darken-1">
+                                    RealSenseから取得した路面情報をもとに、サーボモータを制御して物理的な挙動を再現するシステム。
+                                    センサ検知から実際の到達までの時間差を補償し、適切なタイミングでサーボ角度を制御することで、
+                                    運転席に対して路面の衝撃や振動を忠実に伝達します。
+                                </p>
+                                
+                                <div class="chip-container">
+                                    <div class="chip purple lighten-4">遅延補償制御</div>
+                                    <div class="chip purple lighten-4">適応制御</div>
+                                    <div class="chip purple lighten-4">物理フィードバック</div>
+                                    <div class="chip purple lighten-4">リアルタイム制御</div>
+                                </div>
+                            </div>
+                            <div class="card-action">
+                                <a href="servo-guide.html" class="btn waves-effect waves-light purple">
+                                    <i class="material-icons left">school</i>初学者向けガイド
+                                </a>
+                                <a href="servo-thesis.html" class="btn waves-effect waves-light purple darken-1">
+                                    <i class="material-icons left">library_books</i>技術解説書
+                                </a>
+                                <a href="https://github.com/SOLENOIDRIVE/RealSense-Road-Scanner" class="btn waves-effect waves-light grey darken-3" target="_blank">
+                                    <i class="material-icons left">code</i>GitHub
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Project 3: QRCode Rotation Measurement -->
                     <div class="col s12">
                         <div class="card hoverable">
                             <div class="card-content">

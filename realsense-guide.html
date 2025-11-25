@@ -156,6 +156,63 @@
             padding-top: 30px;
             border-top: 1px solid #ecf0f1;
         }
+        
+        /* スマホ対応 */
+        @media (max-width: 768px) {
+            body {
+                padding: 20px 10px;
+            }
+            .container {
+                padding: 30px 20px;
+            }
+            h1 {
+                font-size: 1.8em;
+            }
+            h1 span {
+                font-size: 0.55em;
+            }
+            h2 {
+                font-size: 1.4em;
+                margin-top: 35px;
+            }
+            h3 {
+                font-size: 1.2em;
+            }
+            .step-box {
+                padding: 20px;
+            }
+            .analogy {
+                padding: 20px;
+            }
+            .formula {
+                font-size: 0.9em;
+                padding: 10px;
+                overflow-x: auto;
+            }
+            .math-explanation {
+                padding: 15px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.5em;
+            }
+            h2 {
+                font-size: 1.2em;
+            }
+            h3 {
+                font-size: 1.1em;
+            }
+            .formula {
+                font-size: 0.8em;
+            }
+            .step-number {
+                width: 28px;
+                height: 28px;
+                font-size: 1em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -167,12 +224,13 @@
 
     <h2>1. 研究の背景と目的 (Background & Objective)</h2>
     <p>
-        本システムの目的は、<strong>「路面性状のリアルタイム計測と物理フィードバックの統合」</strong>です。
+        本システムの目的は、<strong>「路面性状の高精度リアルタイム計測」</strong>です。
     </p>
     <p>
-        自動運転や遠隔操作ロボットにおいて、視覚情報（画面）だけでは路面の凹凸や走行質感を直感的に把握することが困難です。
-        そこで、深度カメラを用いて路面状況をスキャンし、その情報を座席の物理的な挙動（振動や衝撃）に変換することで、
-        遠隔地にいても「そこにいるかのような」臨場感と路面情報の提示を実現します。
+        自動運転や道路保守において、路面の凹凸や障害物を正確に検出することは極めて重要です。
+        従来のRGBカメラでは色や模様に左右されやすく、実際の高低差を正確に測定することが困難でした。
+        そこで、深度カメラを用いることで、照明条件や路面の色に依存しない、
+        3次元的な路面形状の直接計測を実現します。
     </p>
 
     <h2>2. センシング手法 (Sensing Method)</h2>
@@ -267,73 +325,9 @@
         </div>
     </div>
 
-    <h2>4. 制御システム (Control System)</h2>
+    <h2>4. 想定される質問と回答 (Q&A)</h2>
     <p>
-        検知した情報を物理的なフィードバックに変換するため、時間遅延を考慮した制御を行います。
-    </p>
-
-    <div class="analogy">
-        <p>
-            <strong>💡 概念的な理解：</strong><br>
-            センサ（目）は車両の前方にあるため、実際にタイヤ（体）がその場所に到達するまでには時間差があります。
-            システムはこの「未来の衝撃」を予約し、適切なタイミングまで待機してからアクチュエータを作動させます。
-        </p>
-    </div>
-
-    <h3>遅延バッファリング (Delay Buffering)</h3>
-    <p>
-        検知時刻と到達時刻の差を計算し、コマンドをキュー（待ち行列）で管理します。
-    </p>
-
-    <div class="math-explanation">
-        <h4>🎓 数理モデル：到達時刻の予測</h4>
-        <div class="formula">
-            $$ t_{target} = t_{now} + T_{delay} $$
-        </div>
-        <ul>
-            <li>\( t_{target} \): アクチュエータ作動時刻</li>
-            <li>\( t_{now} \): 障害物検知時刻</li>
-            <li>\( T_{delay} \): 到達までの遅延時間（距離 \( L \) / 速度 \( v \)）</li>
-        </ul>
-    </div>
-
-    <h3>サーボ角度制御 (Servo Control)</h3>
-    <p>
-        到達時刻 \( t_{target} \) において、サーボモータの目標角度を生成します。
-    </p>
-    <div class="math-explanation">
-        <h4>🎓 数理モデル：角度算出</h4>
-        <div class="formula">
-            $$ \theta_{target} = \theta_{base} + \Delta \theta $$
-        </div>
-        <ul>
-            <li>\( \theta_{target} \): 出力角度</li>
-            <li>\( \theta_{base} \): 基準姿勢（水平）</li>
-            <li>\( \Delta \theta \): 衝撃による変位量</li>
-        </ul>
-    </div>
-
-    <h2>5. 適応制御 (Adaptive Control)</h2>
-    <p>
-        実環境での誤差を補正するため、システムは自己学習機能を有しています。
-    </p>
-    <div class="math-explanation">
-        <h4>🎓 数理モデル：遅延時間の学習更新</h4>
-        <p>
-            予測された到達時刻と、実際に衝撃（ジャイロセンサ等）を観測した時刻の差分を用いて、パラメータを修正します。
-        </p>
-        <div class="formula">
-            $$ T_{new} = T_{old} + \beta \cdot ( \text{Measured} - \text{Predicted} ) $$
-        </div>
-        <ul>
-            <li>\( T_{new} \): 更新後の遅延パラメータ</li>
-            <li>\( \beta \): 学習率（補正の強さ）</li>
-        </ul>
-    </div>
-
-    <h2>6. FAQ</h2>
-    <p>
-        FAQ形式で、よくある質問に回答します。
+        学会や発表会でよく聞かれる質問とその回答例をまとめました。
     </p>
 
     <div class="step-box">
@@ -357,42 +351,27 @@
     </div>
 
     <div class="step-box">
-        <h3>Q3. 車の速度が変わってもタイミングは合いますか？</h3>
-        <p>
-            <strong>A. はい、速度に応じて遅延時間を調整しています。</strong><br>
-            遅延時間 \( T_{delay} \) は、カメラからタイヤまでの距離 \( L \) と車速 \( v \) から \( T_{delay} = L / v \) で計算されます。
-            車速が速くなれば待ち時間は短くなり、遅くなれば長くなるよう自動的に制御されます。
-        </p>
-    </div>
-
-    <div class="step-box">
-        <h3>Q4. 処理速度は十分ですか？（遅延はありますか？）</h3>
+        <h3>Q3. 処理速度は十分ですか？（遅延はありますか？）</h3>
         <p>
             <strong>A. 約30Hz〜60Hz（0.016〜0.033秒周期）で動作しており、十分高速です。</strong><br>
-            カメラで検知してからタイヤが到達するまでの猶予時間は、本システムではカメラとタイヤの距離が約15cmで、
-            実車速度の1/8スケールで動作するため、実車換算では：
-        </p>
-        <ul>
-            <li><strong>一般走行（60km/h相当）：</strong> 約72ミリ秒の猶予</li>
-            <li><strong>高速走行（100km/h相当）：</strong> 約43ミリ秒の猶予</li>
-        </ul>
-        <p>
-            システムの処理時間（約16〜33ミリ秒）と比較すると、十分な余裕があり、リアルタイムな制御が可能です。
-            実機では距離も8倍（約1.2m）となるため、さらに時間的余裕が増します。
+            深度画像の取得からフィルタリング、障害物検出までの一連の処理が、
+            リアルタイムに実行可能であり、車載システムとして実用的な性能を達成しています。
         </p>
     </div>
 
-    <h2>7. まとめ</h2>
+    <h2>5. まとめ</h2>
     <p>
-        RealSense Road Scannerは、以下の3つの要素技術を統合したシステムです。
+        RealSense Road Scannerは、以下の技術要素で構成される路面計測システムです。
     </p>
     <ol>
         <li><strong>センシング：</strong> 深度カメラによる3次元形状計測</li>
-        <li><strong>認識アルゴリズム：</strong> 適応的フィルタリングと閾値判定</li>
-        <li><strong>制御：</strong> 遅延補償を用いたフィードバック制御</li>
+        <li><strong>フィルタリング：</strong> 多段階ノイズ除去と平滑化処理</li>
+        <li><strong>認識アルゴリズム：</strong> 適応的ベースライン推定と閾値判定による障害物検出</li>
     </ol>
     <p>
-        これにより、視覚情報だけでは得られない「体感」を遠隔操作やシミュレーションに付与することが可能となります。
+        これにより、色や照明に依存しない高精度な路面性状の計測が可能となり、
+        自動運転システムや道路保守への応用が期待されます。
+        検出された路面情報は、後段のServo Movement Systemに渡され、物理フィードバックとして活用されます。
     </p>
 
     <footer>
