@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RealSense Road Scanner: システム技術解説書</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.7;
+            color: #2c3e50;
+            max-width: 950px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #434343 0%, #000000 100%);
+            background-attachment: fixed;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 60px;
+            box-shadow: 0 10px 50px rgba(0,0,0,0.3);
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 10px 20px;
+            background-color: #34495e;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            background-color: #2c3e50;
+            transform: translateX(-5px);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 2.3em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+            border-bottom: 3px solid #34495e;
+            padding-bottom: 20px;
+        }
+        h1 + p {
+            text-align: center;
+            color: #7f8c8d;
+            font-size: 1.1em;
+            margin-bottom: 40px;
+        }
+        h2 {
+            color: #2c3e50;
+            font-size: 1.7em;
+            font-weight: 600;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding-left: 15px;
+            border-left: 5px solid #3498db;
+            background-color: #ecf0f1;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+        }
+        h3 {
+            color: #34495e;
+            font-size: 1.4em;
+            font-weight: 600;
+            margin-top: 35px;
+            margin-bottom: 15px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        h4 {
+            color: #546e7a;
+            font-size: 1.15em;
+            font-weight: 600;
+            margin-top: 25px;
+            margin-bottom: 12px;
+        }
+        p {
+            margin-bottom: 18px;
+            line-height: 1.8;
+            text-align: justify;
+        }
+        .formula {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            margin: 25px 0;
+            text-align: center;
+            overflow-x: auto;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        code {
+            background-color: #f8f9fa;
+            padding: 3px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            color: #e74c3c;
+            font-size: 0.9em;
+        }
+        ul, ol {
+            margin-bottom: 20px;
+            padding-left: 35px;
+            line-height: 1.9;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        .note {
+            background: linear-gradient(135deg, #fff9e6 0%, #ffe082 100%);
+            border-left: 4px solid #ffa726;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 25px 0;
+        }
+        .note strong {
+            color: #e65100;
+        }
+        strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #95a5a6;
+            padding-top: 30px;
+            border-top: 1px solid #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← トップページに戻る</a>
+
+        <h1>RealSense Road Scanner システム技術解説書</h1>
+        <p><strong>Version 4.0 - Technical Anatomy</strong></p>
+
+    <h2>1. 概要 (Abstract)</h2>
+    <p>
+        本システム「RealSense Road Scanner」は，Intel RealSense D435i深度カメラを用いた路面性状のリアルタイム監視および物理フィードバックシステムである．
+        車両前方の路面状況を深度センサでスキャンし，突起や障害物を検出すると，その情報に基づいてサーボモータを制御し，運転席に対して物理的な挙動（衝撃や振動）を再現する．
+        本稿では，深度データ処理による障害物検知アルゴリズム（Camera Detect）と，検出から物理フィードバックまでの遅延補償制御（SYSTEM Control）の数理モデルおよび実装詳細について記述する．
+    </p>
+
+    <h2>2. センシングアルゴリズム (Camera Detect Logic)</h2>
+    <p>
+        路面の微細な変化（2cm程度の突起）を検出するため，深度データに対して高度なフィルタリングと適応的なベースライン推定を行っている．
+    </p>
+
+    <h3>2.1 深度データの取得と前処理</h3>
+    <p>
+        RealSense D435iから取得される生の深度フレーム \( D_{raw}(x, y, t) \) はノイズを含むため，以下のフィルタ処理パイプライン \( \mathcal{F} \) を適用する．
+    </p>
+    <div class="formula">
+        $$ D_{filtered} = \mathcal{F}_{HoleFilling}(\mathcal{F}_{Temporal}(\mathcal{F}_{Spatial}(\mathcal{F}_{Decimation}(D_{raw})))) $$
+    </div>
+
+    <h4>2.1.1 Decimation Filter (\( \mathcal{F}_{Decimation} \))</h4>
+    <p>
+        解像度を削減し，計算負荷を軽減すると同時に平滑化を行う．間引き係数 \( s \) を用いて，出力解像度を \( 1/s \) に縮小する．
+        具体的には，\( s \times s \) のブロック内の深度値をメディアンフィルタまたは平均化によって単一の代表値に集約する．
+    </p>
+    <div class="formula">
+        $$ D_{dec}(x', y') = \text{Median} \left\{ D_{raw}(sx' + i, sy' + j) \mid 0 \leq i, j < s \right\} $$
+    </div>
+    <p>
+        これにより，ランダムノイズの影響が低減され，後続処理の高速化が実現される．
+    </p>
+
+    <h4>2.1.2 Spatial Filter (\( \mathcal{F}_{Spatial} \))</h4>
+    <p>
+        空間的なエッジ保存平滑化フィルタを適用する．一般的には<strong>バイラテラルフィルタ（Bilateral Filter）</strong>または<strong>ガウシアンフィルタ</strong>が使用される．
+        バイラテラルフィルタは，画素位置の距離と深度値の差の両方を考慮した重み付き平均を行う．
+    </p>
+    <div class="formula">
+        $$ D_{spatial}(x, y) = \frac{1}{W(x,y)} \sum_{(i,j) \in \Omega} D(i,j) \cdot \exp\left( -\frac{(x-i)^2 + (y-j)^2}{2\sigma_s^2} \right) \cdot \exp\left( -\frac{(D(x,y) - D(i,j))^2}{2\sigma_r^2} \right) $$
+    </div>
+    <p>
+        ここで，\( \Omega \) は近傍ウィンドウ，\( \sigma_s \) は空間的な標準偏差，\( \sigma_r \) は深度値の標準偏差，\( W(x,y) \) は正規化係数である．
+        これにより，エッジ（段差）を保ちながら平坦部のノイズを除去できる．
+    </p>
+
+    <h4>2.1.3 Temporal Filter (\( \mathcal{F}_{Temporal} \))</h4>
+    <p>
+        時間軸方向の平滑化を行い，フレーム間のフリッカー（瞬間的な深度変動）を抑制する．
+        指数移動平均（EMA: Exponential Moving Average）または単純移動平均を用いて，過去のフレームとの加重平均を計算する．
+    </p>
+    <div class="formula">
+        $$ D_{temp}(x, y, t) = \alpha_{temp} \cdot D(x, y, t) + (1 - \alpha_{temp}) \cdot D_{temp}(x, y, t-1) $$
+    </div>
+    <p>
+        ここで，\( \alpha_{temp} \) は時間平滑化係数（0 < \( \alpha_{temp} \) < 1）であり，値が小さいほど過去のフレームの影響が強く残る．
+        これにより，センサのランダムノイズや環境光の微変動による深度のブレが抑制される．
+    </p>
+
+    <h4>2.1.4 Hole Filling Filter (\( \mathcal{F}_{HoleFilling} \))</h4>
+    <p>
+        深度センサは，透明物体や光沢面，遠距離などで深度値が欠損（ホール）を生じることがある．
+        本フィルタは，欠損領域を周囲の有効な深度値から補間する．一般的な手法は以下の通りである．
+    </p>
+    <ul>
+        <li><strong>Nearest Interpolation:</strong> 最も近い有効な深度値をコピーする．</li>
+        <li><strong>Morphological Closing:</strong> モルフォロジー演算（膨張→収縮）により小さなホールを埋める．</li>
+        <li><strong>Inpainting:</strong> 周囲の深度勾配を考慮して自然な補間を行う．</li>
+    </ul>
+    <p>
+        数理的には，欠損画素 \( (x, y) \) の深度値を，近傍 \( \mathcal{N}(x, y) \) の有効画素の加重平均で復元する．
+    </p>
+    <div class="formula">
+        $$ D_{filled}(x, y) = \frac{\sum_{(i,j) \in \mathcal{N}(x,y), D(i,j) \neq 0} w(i,j) \cdot D(i,j)}{\sum_{(i,j) \in \mathcal{N}(x,y), D(i,j) \neq 0} w(i,j)} $$
+    </div>
+    <p>
+        ここで，\( w(i,j) \) は距離に基づく重み係数（例: \( w(i,j) = 1 / \sqrt{(x-i)^2 + (y-j)^2} \)）である．
+    </p>
+
+    <div class="note">
+        <strong>注記:</strong> 本システムではIntel RealSense SDKが提供する組み込みフィルタを使用しているが，上記の数理モデルはその背景にある一般的な画像処理理論を示している．
+    </div>
+
+    <h3>2.2 路面ベースラインの適応的推定 (EMA)</h3>
+    <p>
+        路面は常に平坦ではなく，勾配やうねりが存在する．そのため，固定の閾値ではなく，現在の路面高さを動的に追従する「ベースライン」を推定する．
+        関心領域（ROI: Region of Interest）内の中央値（またはパーセンタイル値）をそのフレームの代表深度 \( d_t \) とし，指数移動平均（EMA: Exponential Moving Average）を用いてベースライン \( B_t \) を更新する．
+    </p>
+    <div class="formula">
+        $$ d_t = \text{Percentile}(D_{filtered}(x, y, t) \mid_{(x,y) \in ROI}, 50) $$
+        $$ B_t = \alpha \cdot d_t + (1 - \alpha) \cdot B_{t-1} $$
+    </div>
+    <p>
+        ここで，\( \alpha \) は平滑化係数（0 < \alpha < 1）であり，路面の緩やかな変化には追従しつつ，突発的な障害物の影響を受けにくい値に設定される．
+    </p>
+
+    <h3>2.3 障害物検知判定</h3>
+    <p>
+        現在の深度 \( d_t \) が，推定されたベースライン \( B_t \) よりも有意に手前（カメラに近い）にある場合，障害物（凸部）と判定する．
+        閾値を \( h_{thresh} \) （例: 20mm）とすると，検知条件 \( C_{detect} \) は以下の不等式で表される．
+    </p>
+    <div class="formula">
+        $$ C_{detect}(t) = \begin{cases} 
+        1 (True) & \text{if } d_t < B_t - h_{thresh} \\
+        0 (False) & \text{otherwise}
+        \end{cases} $$
+    </div>
+    <p>
+        深度値はカメラからの距離であるため，値が小さいほど物体は近く（高く）にあることに注意されたい．
+    </p>
+
+    <h2>3. 制御と遅延補償 (SYSTEM Control & Delay Compensation)</h2>
+    <p>
+        カメラによる検知時刻 \( t_{detect} \) と，実際に車両（またはシミュレータ）がその地点に到達する時刻 \( t_{impact} \) には時間差が存在する．
+        本システムでは，この時間差を「遅延バッファ（Delay Buffer）」を用いて管理し，適切なタイミングでサーボモータを作動させる．
+    </p>
+
+    <h3>3.1 遅延バッファリングモデル</h3>
+    <p>
+        システムは，現在の時刻 \( t_{now} \) において障害物を検知した場合，その事象を即座に実行せず，予測される到達時刻 \( t_{target} \) に実行されるコマンドとしてキュー（Queue）に登録する．
+    </p>
+    <div class="formula">
+        $$ t_{target} = t_{now} + T_{delay} $$
+    </div>
+    <p>
+        ここで \( T_{delay} \) は，カメラの先読み距離 \( L \) と車速 \( v \) に依存するパラメータである（\( T_{delay} \approx L / v \)）．本システムではこの値を学習または固定値として保持する．
+    </p>
+
+    <h3>3.2 サーボ角度制御</h3>
+    <p>
+        サーボモータの目標角度 \( \theta_{target}(t) \) は，基準角度 \( \theta_{base} \) と，障害物検知による変位 \( \Delta \theta_{bump} \) の和で決定される．
+    </p>
+    <div class="formula">
+        $$ \theta_{target}(t) = \theta_{base} + \Delta \theta(t) $$
+    </div>
+    <p>
+        遅延バッファから取り出されたコマンド \( cmd(t) \) に基づき，\( \Delta \theta(t) \) は以下のように決定される．
+    </p>
+    <div class="formula">
+        $$ \Delta \theta(t) = \begin{cases} 
+        \Delta \theta_{bump} & \text{if } \exists cmd \in \text{Buffer} \text{ s.t. } cmd.time \approx t \\
+        0 & \text{otherwise}
+        \end{cases} $$
+    </div>
+    <p>
+        これにより，ユーザーは「基準角度」を調整することで初期姿勢を変更でき，システムはその基準からの相対変化として衝撃を生成する．
+    </p>
+
+    <h3>3.3 遅延学習（Delay Learning Mode）</h3>
+    <p>
+        実際の物理衝撃（ジャイロセンサ等による検知）時刻 \( t_{phys} \) と，カメラ検知時刻 \( t_{cam} \) の相関から，最適な遅延時間 \( T_{delay} \) を自己学習する機能を有する．
+    </p>
+    <div class="formula">
+        $$ \Delta t_{measured} = t_{phys} - t_{cam} $$
+        $$ T_{delay}^{(new)} = T_{delay}^{(old)} + \beta \cdot (\Delta t_{measured} - T_{delay}^{(old)}) $$
+    </div>
+    <p>
+        ここで \( \beta \) は学習率である．これにより，車速の変化やカメラ設置位置の微調整に対してシステムが適応的に補正を行う．
+    </p>
+
+    <h2>4. システムアーキテクチャ (Implementation Details)</h2>
+    <p>
+        本システムはPython (Backend) と JavaScript (Frontend) で構成され，WebSocket (Eel) を介して通信を行う．
+    </p>
+    <ul>
+        <li><strong>Main Loop (Python):</strong> センサーフュージョンと制御の主ループ．約30Hz～60Hzで駆動．</li>
+        <li><strong>RealSense Manager:</strong> 別スレッドで深度フレームを取得・処理し，最新の検知結果をMain Loopに提供．</li>
+        <li><strong>Delay Buffer:</strong> リングバッファ構造を持ち，時間管理されたコマンドの発火を制御．</li>
+        <li><strong>Frontend (Chart.js):</strong> リアルタイムの深度データ，閾値，サーボ角度（Target/Actual）を可視化．</li>
+    </ul>
+
+    <h2>5. Python実装詳細と使用ライブラリ</h2>
+    <p>
+        本システムのコア処理は<code>realsense_manager.py</code>で実装されており，以下の主要ライブラリを使用している．
+    </p>
+
+    <h3>5.1 pyrealsense2 (Intel RealSense SDK)</h3>
+    <p>
+        Intelが提供するRealSenseカメラ用Pythonバインディング．低レベルのハードウェア制御から高度なフィルタ処理までをカバーする．
+    </p>
+    <div class="formula">
+        <code>import pyrealsense2 as rs</code>
+    </div>
+    <h4>使用されている主要クラスとメソッド：</h4>
+    <ul>
+        <li><strong>rs.pipeline():</strong> データストリームの管理。複数のストリーム（深度・RGB）を同期させて取得するパイプラインアーキテクチャを提供。</li>
+        <li><strong>rs.config():</strong> ストリームの設定（解像度・FPS・フォーマット）を構成。
+            <div class="formula">
+                <code>config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)</code>
+            </div>
+        </li>
+        <li><strong>rs.spatial_filter():</strong> 2.1.2節で説明したバイラテラルフィルタを内部実装したハードウェア加速フィルタ。エッジを保ちながらノイズを除去。</li>
+        <li><strong>rs.temporal_filter():</strong> 指数移動平均を用いた時間軸フィルタ（式は2.1.3節参照）。フレーム間の深度値の揺らぎを抑制。</li>
+        <li><strong>rs.hole_filling_filter():</strong> 深度欠損を近傍補間で埋めるフィルタ（式は2.1.4節参照）。</li>
+        <li><strong>rs.colorizer():</strong> 深度値を疑似カラー画像に変換（近い=赤，遠い=青）。可視化用。</li>
+        <li><strong>depth_sensor.set_option(rs.option.visual_preset, 4):</strong> プリセット「High Density」を設定。近距離での欠損を減らし，データ密度を高める。</li>
+    </ul>
+
+    <h3>5.2 NumPy (Numerical Python)</h3>
+    <p>
+        高速な数値演算ライブラリ。深度画像は2次元配列（ndarray）として扱われ，ベクトル化演算により高速処理を実現。
+    </p>
+    <div class="formula">
+        <code>import numpy as np</code>
+    </div>
+    <h4>使用されている主要関数：</h4>
+    <ul>
+        <li><strong>np.asanyarray():</strong> RealSenseフレームをNumPy配列に変換。メモリコピーを最小限にする最適化版。</li>
+        <li><strong>np.median():</strong> ROI内の深度値の中央値を計算。外れ値に強いロバストな統計量。
+            <div class="formula">
+                <code>median_depth = np.median(valid_depth) * 0.001  # mmかmへ</code>
+            </div>
+        </li>
+        <li><strong>np.percentile():</strong> 下位パーセンタイル（例: 20%）を取得。ROI内の「最も近い物体」を検出するため、中央値ではなく下位値を使用。</li>
+        <li><strong>np.clip():</strong> 値を指定範囲に制限。サーボ角度を-90°～+90°にクリップ。</li>
+        <li><strong>np.zeros():</strong> ゼロ初期化された配列を生成。ROIマスク画像の作成に使用。</li>
+    </ul>
+
+    <h3>5.3 OpenCV (cv2)</h3>
+    <p>
+        コンピュータビジョンの標準ライブラリ。画像処理・幾何学的変換・描画処理を提供。
+    </p>
+    <div class="formula">
+        <code>import cv2</code>
+    </div>
+    <h4>使用されている主要関数：</h4>
+    <ul>
+        <li><strong>cv2.fillPoly():</strong> 多角形領域（ROI）を填りつぶし，バイナリマスクを生成。台形型ROIの定義に使用。
+            <div class="formula">
+                <code>cv2.fillPoly(mask, [roi_points], 255)</code>
+            </div>
+        </li>
+        <li><strong>cv2.polylines():</strong> ROIの輪郭線を描画。可視化用。</li>
+        <li><strong>cv2.imencode():</strong> 画像をJPEG形式にエンコード。Webフロントエンドへの送信に使用。</li>
+    </ul>
+
+    <h3>5.4 実装例: ROIベースの障害物検知</h3>
+    <p>
+        以下は、<code>_process_loop()</code>内で実際に実装されている処理フローのコード抽出である：
+    </p>
+    <div class="formula">
+        <code style="display: block; text-align: left; white-space: pre; font-size: 0.85em;">
+# 1. フィルタパイプライン適用
+filtered_frame = self.spatial.process(depth_frame)
+filtered_frame = self.temporal.process(filtered_frame)
+filtered_frame = self.hole_filling.process(filtered_frame)
+
+# 2. NumPy配列へ変換
+depth_image = np.asanyarray(filtered_frame.get_data())
+
+# 3. ROIマスクを適用
+masked_depth = depth_image[self.mask > 0]
+valid_depth = masked_depth[masked_depth > 0]
+
+# 4. 中央値を計算 (ベースライン用)
+median_depth = float(np.median(valid_depth)) * 0.001  # m単位
+
+# 5. EMAでベースライン更新
+self.baseline = (1.0 - alpha) * self.baseline + alpha * median_depth
+
+# 6. 下位パーセンタイルで障害物検知
+close_depth = float(np.percentile(valid_depth, 20.0)) * 0.001
+diff = self.baseline - close_depth  # 高さ差
+
+# 7. 角度へ変換
+raw_angle = np.clip(diff * scale, -90.0, 90.0)
+        </code>
+    </div>
+    <p>
+        この実装により，2節で説明した数理モデルが実際のコードとして動作していることが分かる．
+    </p>
+
+    <footer>
+        &copy; 2025 ServoDrive - RealSense Road Scanner Project
+    </footer>
+    </div>
+</body>
+</html>

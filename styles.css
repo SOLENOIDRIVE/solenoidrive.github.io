@@ -1,0 +1,191 @@
+/* Custom Styles for Materialize */
+body {
+    font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+    display: flex;
+    min-height: 100vh;
+    flex-direction: column;
+    padding-top: 0;
+}
+
+main {
+    flex: 1 0 auto;
+}
+
+/* Navigation */
+nav {
+    position: fixed;
+    top: 0;
+    z-index: 1000;
+}
+
+/* Navigation Logo */
+.brand-logo .header-logo {
+    height: 50px;
+    width: auto;
+    margin-top: 7px;
+    filter: brightness(0) invert(1);
+}
+
+/* Hero Section - Add padding to prevent content from hiding behind fixed nav */
+body {
+    padding-top: 64px;
+}
+
+/* Hero Section */
+.hero-section {
+    padding: 80px 0;
+    padding-top: 144px;
+    background: linear-gradient(135deg, #424242 0%, #212121 100%);
+}
+
+.hero-section .hero-logo {
+    height: 160px;
+    width: auto;
+    margin-bottom: 20px;
+    filter: brightness(0) invert(1);
+}
+
+.hero-section .tagline {
+    font-size: 1.5rem;
+    font-weight: 300;
+    font-style: italic;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    opacity: 0.9;
+}
+
+/* Section Spacing */
+.section {
+    padding-top: 3rem;
+    padding-bottom: 3rem;
+}
+
+/* Card Customization */
+.card {
+    border-radius: 8px;
+    margin-top: 2rem;
+}
+
+.card .card-title-wrapper {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.card .card-title {
+    font-size: 1.8rem;
+    font-weight: 400;
+    display: flex;
+    align-items: center;
+}
+
+.card .card-title i {
+    margin-right: 10px;
+}
+
+/* Chips Container */
+.chip-container {
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+
+.chip {
+    margin-right: 8px;
+    margin-bottom: 8px;
+}
+
+/* Card Action Buttons */
+.card-action {
+    padding: 20px;
+}
+
+.card-action .btn {
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+
+/* Collection Items */
+.collection .collection-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+}
+
+.collection .collection-item i {
+    margin-right: 15px;
+}
+
+/* Divider Spacing */
+.divider {
+    margin: 20px 0 40px 0;
+}
+
+/* Footer Styling */
+.page-footer {
+    padding-top: 20px;
+}
+
+.page-footer h5 {
+    font-weight: 400;
+}
+
+.page-footer ul {
+    margin: 0;
+}
+
+.page-footer ul li {
+    list-style: none;
+    padding: 5px 0;
+}
+
+.page-footer ul li a {
+    display: flex;
+    align-items: center;
+    transition: color 0.3s ease;
+}
+
+.page-footer ul li a:hover {
+    color: white !important;
+}
+
+.page-footer .material-icons.tiny {
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.footer-copyright {
+    background-color: rgba(0, 0, 0, 0.2);
+}
+
+/* Responsive Design */
+@media only screen and (max-width: 600px) {
+    .hero-section {
+        padding-top: 120px;
+    }
+    
+    .hero-section .hero-logo {
+        height: 120px;
+        margin-bottom: 15px;
+    }
+    
+    .hero-section .tagline {
+        font-size: 1rem;
+        letter-spacing: 1px;
+    }
+    
+    .card .card-title {
+        font-size: 1.3rem;
+    }
+    
+    .card-action .btn {
+        width: 100%;
+        margin-right: 0;
+    }
+    
+    .brand-logo .header-logo {
+        height: 40px;
+        margin-top: 12px;
+    }
+}

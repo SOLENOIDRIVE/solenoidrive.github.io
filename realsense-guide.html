@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RealSense Road Scanner: 初学者向けガイド</title>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.7;
+            color: #2c3e50;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-attachment: fixed;
+        }
+        .container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 50px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            margin-bottom: 30px;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            background-color: #2980b9;
+            transform: translateX(-5px);
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            letter-spacing: -0.5px;
+        }
+        h1 span {
+            display: block;
+            font-size: 0.5em;
+            color: #7f8c8d;
+            font-weight: 400;
+            margin-top: 10px;
+        }
+        h2 {
+            color: #34495e;
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-top: 50px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        h3 {
+            color: #34495e;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-top: 30px;
+            margin-bottom: 15px;
+        }
+        p {
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+        .analogy {
+            background: linear-gradient(135deg, #e3f2fd 0%, #f3e5f5 100%);
+            border-left: 4px solid #3498db;
+            border-radius: 8px;
+            padding: 25px;
+            margin: 30px 0;
+        }
+        .analogy::before {
+            content: "💡 イメージで理解";
+            font-weight: 600;
+            color: #2980b9;
+            font-size: 1.1em;
+            display: block;
+            margin-bottom: 12px;
+        }
+        .step-box {
+            background-color: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 25px;
+            transition: all 0.3s ease;
+        }
+        .step-box:hover {
+            box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+            transform: translateY(-2px);
+        }
+        .step-number {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            margin-right: 12px;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+        .math-explanation {
+            background-color: #fff;
+            border: 1px solid #dee2e6;
+            border-left: 4px solid #3498db;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 6px;
+        }
+        .math-explanation h4 {
+            margin-top: 0;
+            color: #2980b9;
+            font-size: 1.05em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        .formula {
+            text-align: center;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 6px;
+            overflow-x: auto;
+        }
+        ol, ul {
+            margin-left: 20px;
+            line-height: 1.9;
+        }
+        li {
+            margin-bottom: 10px;
+        }
+        strong {
+            color: #2c3e50;
+            font-weight: 600;
+        }
+        footer {
+            margin-top: 60px;
+            text-align: center;
+            font-size: 0.9em;
+            color: #95a5a6;
+            padding-top: 30px;
+            border-top: 1px solid #ecf0f1;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">← トップページに戻る</a>
+
+        <h1>RealSense Road Scanner<span>技術発表資料（初学者向け）</span></h1>
+
+
+    <h2>1. 研究の背景と目的 (Background & Objective)</h2>
+    <p>
+        本システムの目的は、<strong>「路面性状のリアルタイム計測と物理フィードバックの統合」</strong>です。
+    </p>
+    <p>
+        自動運転や遠隔操作ロボットにおいて、視覚情報（画面）だけでは路面の凹凸や走行質感を直感的に把握することが困難です。
+        そこで、深度カメラを用いて路面状況をスキャンし、その情報を座席の物理的な挙動（振動や衝撃）に変換することで、
+        遠隔地にいても「そこにいるかのような」臨場感と路面情報の提示を実現します。
+    </p>
+
+    <h2>2. センシング手法 (Sensing Method)</h2>
+    <p>
+        路面の凹凸を正確に捉えるため、通常のRGBカメラではなく<strong>「深度カメラ（Intel RealSense）」</strong>を採用しています。
+    </p>
+
+    <div class="analogy">
+        <p>
+            <strong>💡 概念的な理解：</strong><br>
+            通常のカメラが風景を「絵（2次元）」として記録するのに対し、深度カメラは空間を「立体（3次元）」として計測します。
+            これにより、模様としての黒い線なのか、実際に凹んでいる溝なのかを明確に区別することができます。
+        </p>
+    </div>
+
+    <h2>3. アルゴリズム (Processing Algorithm)</h2>
+    <p>
+        取得した深度データから障害物を検知するプロセスは、以下の3段階で構成されます。
+    </p>
+
+    <div class="step-box">
+        <h3><span class="step-number">1</span>ノイズ除去と平滑化 (Filtering)</h3>
+        <p>
+            センサ由来のノイズや欠損を除去し、解析に適したデータに整形します。
+        </p>
+        
+        <div class="math-explanation">
+            <h4>🎓 数理モデル：フィルタリング・パイプライン</h4>
+            <p>
+                生データ \( D_{raw} \) に対し、複数のフィルタ処理 \( \mathcal{F} \) を適用して信頼性を向上させます。
+            </p>
+            <div class="formula">
+                $$ D_{filtered} = \mathcal{F}_{Hole}(\mathcal{F}_{Time}(\mathcal{F}_{Space}(\mathcal{F}_{Size}(D_{raw})))) $$
+            </div>
+            <ul>
+                <li>\( \mathcal{F}_{Size} \): データ量削減と平滑化（Decimation）</li>
+                <li>\( \mathcal{F}_{Space} \): 空間的な突発ノイズの除去（Spatial）</li>
+                <li>\( \mathcal{F}_{Time} \): 時間的な揺らぎの抑制（Temporal）</li>
+                <li>\( \mathcal{F}_{Hole} \): データ欠損の補間（Hole Filling）</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="step-box">
+        <h3><span class="step-number">2</span>路面ベースライン推定 (Baseline Estimation)</h3>
+        <p>
+            路面の勾配やうねりに適応するため、固定の基準面ではなく、動的に変化する「ベースライン（基準高さ）」を推定します。
+        </p>
+        
+        <div class="math-explanation">
+            <h4>🎓 数理モデル：指数移動平均 (EMA)</h4>
+            <p>
+                現在の路面高さ \( d_t \) を用いて、基準値 \( B_t \) を更新します。
+            </p>
+            <div class="formula">
+                $$ B_t = \alpha \cdot d_t + (1 - \alpha) \cdot B_{t-1} $$
+            </div>
+            <ul>
+                <li>\( B_t \): 推定された現在の路面基準高さ</li>
+                <li>\( B_{t-1} \): 過去の基準高さ</li>
+                <li>\( \alpha \): 追従係数（0 < \alpha < 1）。値が大きいほど地形変化に敏感に追従します。</li>
+            </ul>
+            <p>
+                この手法により、緩やかな坂道は「平坦」とみなしつつ、急激な段差のみを検出することが可能になります。
+            </p>
+        </div>
+    </div>
+
+    <div class="step-box">
+        <h3><span class="step-number">3</span>障害物検知判定 (Detection)</h3>
+        <p>
+            推定されたベースラインと比較して、有意に突出している箇所を障害物として判定します。
+        </p>
+
+        <div class="math-explanation">
+            <h4>🎓 数理モデル：閾値判定</h4>
+            <p>
+                以下の条件を満たした場合に、システムは「障害物あり」と判定します。
+            </p>
+            <div class="formula">
+                $$ d_t < B_t - h_{thresh} $$
+            </div>
+            <ul>
+                <li>\( d_t \): 計測された深度（カメラからの距離）</li>
+                <li>\( B_t \): 基準深度</li>
+                <li>\( h_{thresh} \): 検知閾値（例: 20mm）</li>
+            </ul>
+            <p>
+                深度値は「距離」であるため、値が小さいほど物体はカメラに近い（高い）ことを意味します。
+                すなわち、基準面よりも閾値以上に手前にある物体を検出しています。
+            </p>
+        </div>
+    </div>
+
+    <h2>4. 制御システム (Control System)</h2>
+    <p>
+        検知した情報を物理的なフィードバックに変換するため、時間遅延を考慮した制御を行います。
+    </p>
+
+    <div class="analogy">
+        <p>
+            <strong>💡 概念的な理解：</strong><br>
+            センサ（目）は車両の前方にあるため、実際にタイヤ（体）がその場所に到達するまでには時間差があります。
+            システムはこの「未来の衝撃」を予約し、適切なタイミングまで待機してからアクチュエータを作動させます。
+        </p>
+    </div>
+
+    <h3>遅延バッファリング (Delay Buffering)</h3>
+    <p>
+        検知時刻と到達時刻の差を計算し、コマンドをキュー（待ち行列）で管理します。
+    </p>
+
+    <div class="math-explanation">
+        <h4>🎓 数理モデル：到達時刻の予測</h4>
+        <div class="formula">
+            $$ t_{target} = t_{now} + T_{delay} $$
+        </div>
+        <ul>
+            <li>\( t_{target} \): アクチュエータ作動時刻</li>
+            <li>\( t_{now} \): 障害物検知時刻</li>
+            <li>\( T_{delay} \): 到達までの遅延時間（距離 \( L \) / 速度 \( v \)）</li>
+        </ul>
+    </div>
+
+    <h3>サーボ角度制御 (Servo Control)</h3>
+    <p>
+        到達時刻 \( t_{target} \) において、サーボモータの目標角度を生成します。
+    </p>
+    <div class="math-explanation">
+        <h4>🎓 数理モデル：角度算出</h4>
+        <div class="formula">
+            $$ \theta_{target} = \theta_{base} + \Delta \theta $$
+        </div>
+        <ul>
+            <li>\( \theta_{target} \): 出力角度</li>
+            <li>\( \theta_{base} \): 基準姿勢（水平）</li>
+            <li>\( \Delta \theta \): 衝撃による変位量</li>
+        </ul>
+    </div>
+
+    <h2>5. 適応制御 (Adaptive Control)</h2>
+    <p>
+        実環境での誤差を補正するため、システムは自己学習機能を有しています。
+    </p>
+    <div class="math-explanation">
+        <h4>🎓 数理モデル：遅延時間の学習更新</h4>
+        <p>
+            予測された到達時刻と、実際に衝撃（ジャイロセンサ等）を観測した時刻の差分を用いて、パラメータを修正します。
+        </p>
+        <div class="formula">
+            $$ T_{new} = T_{old} + \beta \cdot ( \text{Measured} - \text{Predicted} ) $$
+        </div>
+        <ul>
+            <li>\( T_{new} \): 更新後の遅延パラメータ</li>
+            <li>\( \beta \): 学習率（補正の強さ）</li>
+        </ul>
+    </div>
+
+    <h2>6. 想定される質問と回答 (Q&A)</h2>
+    <p>
+        学会や発表会でよく聞かれる質問とその回答例をまとめました。
+    </p>
+
+    <div class="step-box">
+        <h3>Q1. なぜ普通のカメラ（RGB）ではなく、深度カメラを使うのですか？</h3>
+        <p>
+            <strong>A. 路面の「形状」を直接計測するためです。</strong><br>
+            RGBカメラでは、路面に描かれた「黒い線」と「実際のひび割れ（溝）」を区別することが困難です。
+            また、影や水たまりの影響も強く受けます。
+            深度カメラであれば、色に関係なく「距離（高さ）」を直接測れるため、物理的な凹凸だけを正確に検出できます。
+        </p>
+    </div>
+
+    <div class="step-box">
+        <h3>Q2. 坂道やうねりのある道では誤作動しませんか？</h3>
+        <p>
+            <strong>A. 「移動平均（EMA）」を使っているため、誤作動しにくい設計です。</strong><br>
+            本システムは、路面の絶対的な高さではなく、周囲との相対的な変化を見ています。
+            緩やかな坂道であれば、基準値（ベースライン）も一緒に変化していくため、障害物とは判定されません。
+            急激な変化（段差）だけを抽出することができます。
+        </p>
+    </div>
+
+    <div class="step-box">
+        <h3>Q3. 車の速度が変わってもタイミングは合いますか？</h3>
+        <p>
+            <strong>A. はい、速度に応じて遅延時間を調整しています。</strong><br>
+            遅延時間 \( T_{delay} \) は、カメラからタイヤまでの距離 \( L \) と車速 \( v \) から \( T_{delay} = L / v \) で計算されます。
+            車速が速くなれば待ち時間は短くなり、遅くなれば長くなるよう自動的に制御されます。
+        </p>
+    </div>
+
+    <div class="step-box">
+        <h3>Q4. 処理速度は十分ですか？（遅延はありますか？）</h3>
+        <p>
+            <strong>A. 約30Hz〜60Hz（0.016〜0.033秒周期）で動作しており、十分高速です。</strong><br>
+            一般的な走行速度であれば、カメラで検知してからタイヤが到達するまでに数百ミリ秒の猶予があります。
+            システムの処理時間はそれよりも遥かに短いため、リアルタイムな制御が可能です。
+        </p>
+    </div>
+
+    <h2>7. まとめ</h2>
+    <p>
+        RealSense Road Scannerは、以下の3つの要素技術を統合したシステムです。
+    </p>
+    <ol>
+        <li><strong>センシング：</strong> 深度カメラによる3次元形状計測</li>
+        <li><strong>認識アルゴリズム：</strong> 適応的フィルタリングと閾値判定</li>
+        <li><strong>制御：</strong> 遅延補償を用いたフィードバック制御</li>
+    </ol>
+    <p>
+        これにより、視覚情報だけでは得られない「体感」を遠隔操作やシミュレーションに付与することが可能となります。
+    </p>
+
+    <footer>
+        &copy; 2025 ServoDrive - RealSense Road Scanner Project
+    </footer>
+    </div>
+</body>
+</html>
