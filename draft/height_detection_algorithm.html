@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RealSense Road Scanner V5 - Height Detection Algorithm</title>
+    <style>
+        body {
+            font-family: "Segoe UI", Helvetica, Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+            background-color: #fdfdfd;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: #2c3e50;
+            margin-top: 1.5em;
+        }
+
+        h1 {
+            border-bottom: 2px solid #3498db;
+            padding-bottom: 10px;
+            text-align: center;
+        }
+
+        h2 {
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            color: #34495e;
+            border-left: 5px solid #3498db;
+            padding-left: 10px;
+        }
+
+        h3 {
+            color: #2980b9;
+        }
+
+        .section-box {
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+            margin-bottom: 30px;
+            border: 1px solid #eee;
+        }
+
+        .academic {
+            border-top: 4px solid #e74c3c;
+        }
+
+        .beginner {
+            border-top: 4px solid #2ecc71;
+        }
+
+        pre {
+            background: #f6f8fa;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+            font-family: Consolas, Monaco, "Andale Mono", monospace;
+            font-size: 0.9em;
+            border: 1px solid #e1e4e8;
+        }
+
+        code {
+            background: #f6f8fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, "Andale Mono", monospace;
+            color: #e74c3c;
+            font-size: 0.9em;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 20px 0;
+            font-size: 0.9em;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f8f9fa;
+            color: #2c3e50;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        .mermaid {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .note {
+            background-color: #f1f8ff;
+            border-left: 4px solid #3498db;
+            padding: 10px 15px;
+            margin: 15px 0;
+            color: #2c3e50;
+            font-size: 0.9em;
+        }
+
+        .math-block {
+            background: #fff;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+            margin: 10px 0;
+            box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.02);
+        }
+    </style>
+    <script>
+        window.MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script type="text/javascript" id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true });
+    </script>
+</head>
+
+<body>
+    <h1>RealSense Road Scanner V5<br><small style="font-size: 0.6em; color: #7f8c8d;">Height Detection Algorithm
+            Documentation</small></h1>
+
+    <!-- ACADEMIC SECTION -->
+    <div class="section-box academic">
+        <h2>🔬 1. Technical Implementation (Academic)</h2>
+        <p>This section details the mathematical model and processing pipeline used in
+            <code>backend/height_detector.py</code>. The system utilizes complete 3D point cloud reconstruction and
+            SVD-based plane fitting to achieve measurement accuracy comparable to Intel RealSense Viewer.
+        </p>
+
+        <h3>1.1 3D Point Cloud Reconstruction (Deprojection)</h3>
+        <p>Instead of processing raw depth maps, the system first transforms every valid pixel $(u, v)$ with depth
+            $d_{\text{raw}}$ into a 3D point $\mathbf{P} = [X, Y, Z]^T$ in the camera coordinate system.</p>
+
+        <div class="math-block">
+            $$
+            \begin{aligned}
+            Z &= d_{\text{raw}} \times s \\
+            X &= \frac{(u - c_x) \times Z}{f_x} \\
+            Y &= \frac{(v - c_y) \times Z}{f_y}
+            \end{aligned}
+            $$
+        </div>
+
+        <p>Where:</p>
+        <ul>
+            <li>$s$: Depth scale unit (typically 0.001 for millimeters)</li>
+            <li>$(c_x, c_y)$: Principal point (optical center) from intrinsics</li>
+            <li>$(f_x, f_y)$: Focal length from intrinsics</li>
+        </ul>
+        <p>This vectorization is performed using NumPy for all pixels within the Region of Interest (ROI), resulting in
+            a point cloud tensor of shape $(N, 3)$.</p>
+
+        <h3>1.2 Floor Plane Estimation via SVD</h3>
+        <p>To establish a robust zero-reference, the system estimates the floor plane equation $ax + by + cz + d = 0$
+            from the point cloud data within the ROI.</p>
+
+        <p>We solve the total least squares problem using <strong>Singular Value Decomposition (SVD)</strong>:</p>
+
+        <ol>
+            <li><strong>Centroid Calculation</strong>: Compute the geometric center $\mathbf{\bar{p}}$ of all points
+                $P_i$.
+                $$ \mathbf{\bar{p}} = \frac{1}{N} \sum_{i=1}^{N} P_i $$
+            </li>
+            <li><strong>Centering</strong>: Shift all points to the origin.
+                $$ P'_{\text{centered}} = P - \mathbf{\bar{p}} $$
+            </li>
+            <li><strong>SVD Decomposition</strong>: Decompose the centered matrix.
+                $$ P'_{\text{centered}} = U \Sigma V^T $$
+            </li>
+            <li><strong>Normal Extraction</strong>: The normal vector $\mathbf{n} = [a, b, c]^T$ corresponds to the
+                singular vector associated with the smallest singular value (the last row of $V^T$, or last column of
+                $V$).
+                $$ \mathbf{n} = V^T[-1] $$
+            </li>
+            <li><strong>Plane Parameter $d$</strong>: Derived from the constraint that the plane passes through the
+                centroid.
+                $$ d = - \mathbf{n} \cdot \mathbf{\bar{p}} $$
+            </li>
+        </ol>
+
+        <div class="note">
+            <strong>Code Reference:</strong> See <code>HeightDetector._fit_floor_plane()</code> in
+            <code>backend/height_detector.py</code>. The normal is enforced to point towards the camera (negative Z
+            direction) to ensure consistent distance signs.
+        </div>
+
+        <h3>1.3 Obstacle Height Calculation</h3>
+        <p>For obstacle detection, the system calculates the signed perpendicular distance $h_i$ of each point $P_i$ in
+            the ROI to the estimated floor plane.</p>
+
+        <div class="math-block">
+            $$ h_i = a X_i + b Y_i + c Z_i + d $$
+        </div>
+
+        <p>Since the plane normal $\mathbf{n}$ is oriented towards the camera, points "above" the floor (obstacles)
+            yield positive distances.</p>
+
+        <h4>Robust Maximum Estimation</h4>
+        <p>Single-pixel noise can cause spikes in max height. To mitigate this:</p>
+        <ol>
+            <li>Sort all distances $h_i$ in descending order.</li>
+            <li>Take the arithmetic mean of the top $N$ points (typically $N=20$).</li>
+        </ol>
+
+        <div class="math-block">
+            $$ H_{\text{final}} = \frac{1}{N} \sum_{j=1}^{N} h_{(j)} $$
+        </div>
+
+        <h3>1.4 Post-Processing</h3>
+        <p>Final output is smoothed using an Exponential Moving Average (EMA) to reduce jitter:</p>
+        <div class="math-block">
+            $$ H_t = (1 - \alpha) H_{t-1} + \alpha H_{\text{measured}} $$
+        </div>
+        <p>Where $\alpha = 0.3$ is the smoothing factor.</p>
+    </div>
+
+    <!-- BEGINNER SECTION -->
+    <div class="section-box beginner">
+        <h2>🔰 2. System Logic (Beginner Friendly)</h2>
+        <p>This section explains how the V5 software "thinks" when it looks at the road, using simple analogies.</p>
+
+        <h3>Step 1: Making the World 3D (The "Matrix" Step)</h3>
+        <p>Use the depth camera to turn the flat image into a 3D cloud of points.</p>
+        <div class="mermaid">
+            graph LR
+            A[Flat Depth Image] -->|Mathematics| B[3D Clouds of Points]
+            style A fill:#f9f,stroke:#333
+            style B fill:#bbf,stroke:#333
+        </div>
+        <p>Usually, a depth camera just gives you a "distance map" (like a heat map). But if the camera is tilted,
+            "farther" doesn't mean "lower". We use math to convert every pixel into real 3D coordinates (X, Y, Z) in
+            space, just like in a video game.</p>
+
+        <h3>Step 2: Finding the "Floor" (The Tablecloth Analogy)</h3>
+        <p>Imagine throwing a tablecloth over a messy table. The tablecloth settles flat on the surface. Our algorithm
+            does this mathematically using a technique called <strong>SVD</strong>.</p>
+        <ul>
+            <li><strong>Constraint:</strong> It looks at <i>all</i> the points in the green box (ROI).</li>
+            <li><strong>Best Fit:</strong> It calculates the "perfect flat sheet" that cuts through the middle of all
+                those floor points. reference.</li>
+        </ul>
+        <p>This is crucial because <strong>it works even if the camera is tilted!</strong> The "perfect sheet" will just
+            be tilted too, matching the real floor exactly.</p>
+
+        <h3>Step 3: Measuring the Bumps</h3>
+        <p>Now that we have our invisible "perfect floor sheet", we just check every point again.</p>
+        <div class="mermaid">
+            graph TD
+            P["Point Cloud"] --> Q{"Is point above sheet?"}
+            Q -->|Yes| R["Measure Distance"]
+            Q -->|No| S["Ignore (It's floor)"]
+            R --> T["Average the Highest 20 Points"]
+        </div>
+        <ul>
+            <li>We measure the <strong>straight-line distance</strong> from the invisible sheet to the highest points.
+            </li>
+            <li>We don't trust just one point (it might be a speck of dust), so we take the average of the <strong>top
+                    20 highest points</strong>.</li>
+        </ul>
+
+        <h3>Summary of V5 Improvements</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>V4 (Old)</th>
+                    <th>V5 (New)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Coordinate System</strong></td>
+                    <td>2D Depth Map</td>
+                    <td><strong>Full 3D Point Cloud</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Floor Detection</strong></td>
+                    <td>Fixed Distance</td>
+                    <td><strong>Dynamic Plane Fitting (SVD)</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Tilt Handling</strong></td>
+                    <td>Errors if tilted</td>
+                    <td><strong>Auto-corrects any tilt</strong></td>
+                </tr>
+                <tr>
+                    <td><strong>Accuracy Source</strong></td>
+                    <td>Simple subtraction</td>
+                    <td><strong>Matches RealSense Viewer</strong></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+</body>
+
+</html>
